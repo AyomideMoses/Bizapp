@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Message log - {{ business }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Message log</h1>
+  <a class="btn secondary" href="/app/reminders">Back to reminders</a>
+</div>
+<p class="muted">Shows when someone opened WhatsApp with a message. It can't confirm delivery. The newest 200 are shown.</p>
+
+<div class="table-wrap">
+  {% if log %}
+  <table>
+    <thead><tr><th>Time</th><th>Customer</th><th>Invoice</th><th>Type</th><th>Message</th><th>By</th></tr></thead>
+    <tbody>
+      {% for m in log %}
+      <tr>
+        <td>{{ m.created_at|watdt }}</td>
+        <td>{{ m.customer_name }}<br><span class="muted">+{{ m.phone }}</span></td>
+        <td>{{ m.invoice_number or "-" }}</td>
+        <td>{{ kind_labels.get(m.kind, m.kind) }}</td>
+        <td style="white-space:normal; min-width:240px">{{ m.message|truncate(110) }}</td>
+        <td>{{ m.sent_by }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No messages yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

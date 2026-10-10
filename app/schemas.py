@@ -96,3 +96,31 @@ class ExpenseOut(ExpenseCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int
     expense_date: date
+
+Role = Literal["admin", "staff"]
+
+class UserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=30)
+    full_name: str
+    password: str = Field(min_length=8, max_length=64)
+    role: Role = "staff"
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    username: str
+    full_name: str
+    role: str
+    is_active: bool
+
+class UserUpdate(BaseModel):
+    role: Optional[Role] = None
+    is_active: Optional[bool] = None
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, max_length=64)
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

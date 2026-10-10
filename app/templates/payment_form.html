@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Edit payment - {{ business }}{% endblock %}
+{% block content %}
+<h1>Edit payment</h1>
+<p class="muted">{{ invoice.invoice_number }} - {{ invoice.order.customer.name }} - invoice total {{ invoice.total|naira }}</p>
+<div class="form-card">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/app/payments/{{ payment.id }}/edit">
+    <label for="amount">Amount (₦)</label>
+    <input id="amount" name="amount" type="number" min="1" step="1" inputmode="numeric"
+           value="{{ form.amount }}" required autofocus>
+
+    <label for="method">Paid by</label>
+    <select id="method" name="method">
+      {% for key, label in methods %}
+      <option value="{{ key }}" {{ 'selected' if form.method == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="reference">Reference (optional)</label>
+    <input id="reference" name="reference" value="{{ form.reference }}">
+
+    <div class="actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn secondary" href="/app/orders/{{ invoice.order_id }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

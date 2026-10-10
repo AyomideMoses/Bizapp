@@ -19,3 +19,30 @@ if not SECRET_KEY:
 TOKEN_HOURS = 12          # how long a login lasts
 BACKUP_DIR = "backups"
 BACKUP_KEEP = 14          # number of backups to keep
+
+COUNTRY_CODE = "234"   # Nigeria. Local numbers like 0801... become 234801...
+
+# Placeholders: {name} {business} {invoice} {total} {paid} {balance}
+#               {balance_line} {amount} {items} {due}
+WHATSAPP_TEMPLATES = {
+    "received": (
+        "Hello {name}, we have received your laundry ({items}) at {business}. "
+        "Order {invoice}, total {total}. Expected ready: {due}. Thank you!"
+    ),
+    "ready": (
+        "Hello {name}, your laundry order {invoice} is ready for pickup at {business}. "
+        "{balance_line} Thank you!"
+    ),
+    "receipt": (
+        "Hello {name}, we received your payment of {amount} for order {invoice}. "
+        "{balance_line} Thank you for choosing {business}!"
+    ),
+    "balance": (
+        "Hello {name}, a friendly reminder from {business}: {balance} is outstanding "
+        "on order {invoice} (total {total}). Kindly pay at your earliest convenience. Thank you."
+    ),
+    "delayed": (
+        "Hello {name}, we are sorry your order {invoice} is not ready yet. "
+        "We will let you know as soon as it is. Thank you for your patience. - {business}"
+    ),
+}

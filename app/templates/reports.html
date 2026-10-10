@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Reports - {{ business }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Reports</h1>
+  <button class="btn secondary no-print" onclick="window.print()">Print</button>
+</div>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<div class="chips">
+  {% for label, s, e in ranges %}
+  <a class="chip {{ 'on' if s == start and e == end }}" href="/app/reports?start={{ s }}&end={{ e }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<form class="filters" method="get" action="/app/reports">
+  <div class="field"><label for="start">From</label><input id="start" name="start" type="date" value="{{ start }}"></div>
+  <div class="field"><label for="end">To</label><input id="end" name="end" type="date" value="{{ end }}"></div>
+  <button class="btn" type="submit">Show</button>
+</form>
+
+<h2>{{ start }} to {{ end }}</h2>
+<div class="grid">
+  <div class="card good"><div class="label">Revenue</div><div class="value">{{ report.revenue|naira }}</div></div>
+  <div class="card"><div class="label">Expenses</div><div class="value">{{ report.expenses|naira }}</div></div>
+  <div class="card {{ 'good' if report.profit >= 0 else 'warn' }}"><div class="label">Profit</div><div class="value">{{ report.profit|naira }}</div></div>
+</div>
+
+<h2>Revenue by payment method</h2>
+<div class="table-wrap">
+  {% if report.by_method %}
+  <table>
+    <thead><tr><th>Method</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for method, amount in report.by_method.items() %}
+      <tr><td>{{ method|capitalize }}</td><td>{{ amount|naira }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No payments in this period.</div>{% endif %}
+</div>
+
+<h2>Revenue by day</h2>
+<div class="table-wrap">
+  {% if report.by_day %}
+  <table>
+    <thead><tr><th>Date</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for day, amount in report.by_day.items() %}
+      <tr><td>{{ day }}</td><td>{{ amount|naira }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No payments in this period.</div>{% endif %}
+</div>
+
+<h2>Money owed to you: {{ outstanding.total_outstanding|naira }}</h2>
+<div class="table-wrap">
+  {% if outstanding.invoices %}
+  <table>
+    <thead><tr><th>Invoice</th><th>Customer</th><th>Phone</th><th>Total</th><th>Paid</th><th>Balance</th></tr></thead>
+    <tbody>
+      {% for r in outstanding.invoices %}
+      <tr>
+        <td><a href="/app/orders?q={{ r.invoice_number }}">{{ r.invoice_number }}</a></td>
+        <td>{{ r.customer_name }}</td>
+        <td><a href="tel:{{ r.customer_phone }}">{{ r.customer_phone }}</a></td>
+        <td>{{ r.total|naira }}</td>
+        <td>{{ r.amount_paid|naira }}</td>
+        <td>{{ r.balance|naira }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Nobody owes you anything.</div>{% endif %}
+</div>
+
+<h2>Top customers</h2>
+<div class="table-wrap">
+  {% if top %}
+  <table>
+    <thead><tr><th>Customer</th><th>Orders</th><th>Billed</th><th>Paid</th></tr></thead>
+    <tbody>
+      {% for c in top %}
+      <tr>
+        <td><a href="/app/customers/{{ c.customer_id }}">{{ c.name }}</a></td>
+        <td>{{ c.orders }}</td>
+        <td>{{ c.total_billed|naira }}</td>
+        <td>{{ c.total_paid|naira }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No orders yet.</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Orders - {{ business }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Orders</h1>
+  <a class="btn" href="/app/orders/new">+ New order</a>
+</div>
+
+<form class="search" method="get" action="/app/orders">
+  <input name="q" value="{{ q }}" placeholder="Search customer, phone or invoice no." autocomplete="off">
+  <input type="hidden" name="status" value="{{ status }}">
+  <input type="hidden" name="pay" value="{{ pay }}">
+  <button class="btn" type="submit">Search</button>
+</form>
+
+<div class="chips">
+  <a class="chip {{ 'on' if not status }}" href="/app/orders?pay={{ pay }}&q={{ q|urlencode }}">All</a>
+  {% for s in statuses %}
+  <a class="chip {{ 'on' if status == s }}" href="/app/orders?status={{ s }}&pay={{ pay }}&q={{ q|urlencode }}">{{ s|capitalize }}</a>
+  {% endfor %}
+</div>
+<div class="chips">
+  <a class="chip {{ 'on' if not pay }}" href="/app/orders?status={{ status }}&q={{ q|urlencode }}">Any payment</a>
+  <a class="chip {{ 'on' if pay == 'unpaid' }}" href="/app/orders?status={{ status }}&pay=unpaid&q={{ q|urlencode }}">Owing</a>
+  <a class="chip {{ 'on' if pay == 'paid' }}" href="/app/orders?status={{ status }}&pay=paid&q={{ q|urlencode }}">Fully paid</a>
+</div>
+
+<div class="table-wrap">
+  {% if orders %}
+  <table>
+    <thead>
+      <tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Ready by</th><th>Status</th><th>Payment</th><th>Balance</th></tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td><a href="/app/orders/{{ o.id }}">{{ o.invoice.invoice_number if o.invoice else "#" ~ o.id }}</a></td>
+        <td><a href="/app/customers/{{ o.customer.id }}">{{ o.customer.name }}</a></td>
+        <td>{{ o.created_at|wat }}</td>
+        <td>{{ o.due_date|dt if o.due_date else "-" }}{% if is_overdue(o) %} <span class="badge unpaid">Overdue</span>{% endif %}</td>
+        <td><span class="badge {{ o.status }}">{{ o.status|capitalize }}</span></td>
+        <td>{% if o.invoice %}<span class="badge {{ o.invoice.payment_status }}">{{ o.invoice.payment_status|replace("_", " ")|capitalize }}</span>{% endif %}</td>
+        <td>{{ o.invoice.balance|naira if o.invoice else "-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No orders match these filters.</div>
+  {% endif %}
+</div>
+{% endblock %}

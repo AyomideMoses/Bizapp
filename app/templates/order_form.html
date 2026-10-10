@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}New order - {{ business }}{% endblock %}
+
+{% macro row(r) %}
+<div class="item-row">
+  <div class="field grow">
+    <label>Garment</label>
+    <input type="text" name="garment" list="garments" autocomplete="off"
+           placeholder="e.g. Shirt" value="{{ r.garment }}">
+  </div>
+  <div class="field">
+    <label>Service</label>
+    <select name="service">
+      {% for key, label in services %}
+      <option value="{{ key }}" {{ 'selected' if r.service == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field small">
+    <label>Qty</label>
+    <input type="number" name="quantity" min="1" step="1" inputmode="numeric" value="{{ r.quantity }}">
+  </div>
+  <div class="field">
+    <label>Price each (₦)</label>
+    <input type="number" name="unit_price" min="1" step="1" inputmode="numeric" value="{{ r.unit_price }}">
+  </div>
+  <div class="field grow">
+    <label>Note (optional)</label>
+    <input type="text" name="notes" placeholder="e.g. stain on collar" value="{{ r.notes }}">
+  </div>
+  <div class="line-total">₦0</div>
+  <button type="button" class="btn danger remove">Remove</button>
+</div>
+{% endmacro %}
+
+{% block content %}
+<h1>{{ title or "New order" }}</h1>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+{% if not customers %}
+<div class="card">Add a customer first. <a href="/app/customers/new">Add customer</a></div>
+{% else %}
+<form method="post" action="{{ action or '/app/orders/new' }}">  <div class="form-card wide">
+    <label for="customer_id">Customer</label>
+    <select id="customer_id" name="customer_id" required>
+      <option value="">Select a customer...</option>
+      {% for c in customers %}
+      <option value="{{ c.id }}" {{ 'selected' if c.id == customer_id }}>{{ c.name }} - {{ c.phone }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="due_date">Ready by (optional)</label>
+    <input id="due_date" name="due_date" type="datetime-local" value="{{ due_date }}">
+  </div>
+
+  <h2>Garments</h2>
+  <div id="rows">
+    {% for r in rows %}{{ row(r) }}{% endfor %}
+  </div>
+  <button type="button" class="btn secondary" id="add-row">+ Add another garment</button>
+
+  <div class="order-total">
+    <span>Total</span>
+    <strong id="total">₦0</strong>
+  </div>
+
+  <div class="actions">
+<button class="btn" type="submit">{{ submit_label or "Create order & invoice" }}</button>   
+<a class="btn secondary" href="{{ cancel or '/app/customers' }}">Cancel</a>  </div>
+</form>
+
+<datalist id="garments">
+  <option value="Shirt"></option><option value="Trousers"></option>
+  <option value="Suit"></option><option value="Jacket"></option>
+  <option value="Agbada"></option><option value="Native wear"></option>
+  <option value="Dress"></option><option value="Skirt"></option>
+  <option value="Duvet"></option><option value="Bedsheet"></option>
+  <option value="Towel"></option><option value="Curtain"></option>
+</datalist>
+
+<script>
+  var rowsEl = document.getElementById("rows");
+
+  function money(n) {
+    return "₦" + Math.round(n).toLocaleString("en-NG");
+  }
+
+  function recalc() {
+    var total = 0;
+    var rows = rowsEl.querySelectorAll(".item-row");
+    for (var i = 0; i < rows.length; i++) {
+      var qty = parseInt(rows[i].querySelector("[name=quantity]").value) || 0;
+      var price = parseInt(rows[i].querySelector("[name=unit_price]").value) || 0;
+      rows[i].querySelector(".line-total").textContent = money(qty * price);
+      total += qty * price;
+    }
+    document.getElementById("total").textContent = money(total);
+  }
+
+  document.getElementById("add-row").addEventListener("click", function () {
+    var copy = rowsEl.lastElementChild.cloneNode(true);
+    copy.querySelector("[name=garment]").value = "";
+    copy.querySelector("[name=service]").value = "wash_iron";
+    copy.querySelector("[name=quantity]").value = "1";
+    copy.querySelector("[name=unit_price]").value = "";
+    copy.querySelector("[name=notes]").value = "";
+    rowsEl.appendChild(copy);
+    copy.querySelector("[name=garment]").focus();
+    recalc();
+  });
+
+  rowsEl.addEventListener("click", function (e) {
+    if (e.target.classList.contains("remove") && rowsEl.children.length > 1) {
+      e.target.closest(".item-row").remove();
+      recalc();
+    }
+  });
+
+  rowsEl.addEventListener("input", recalc);
+  recalc();
+</script>
+{% endif %}
+{% endblock %}

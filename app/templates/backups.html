@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Backups - {{ business }}{% endblock %}
+{% block content %}
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+<div class="page-head">
+  <h1>Backups</h1>
+  <form method="post" action="/app/backups/create">
+    <button class="btn" type="submit">Back up now</button>
+  </form>
+</div>
+<p class="muted">The newest 14 backups are kept. Download copies to your own computer regularly, because a backup stored on the same machine doesn't protect you if that machine fails.</p>
+
+<div class="table-wrap">
+  {% if backups %}
+  <table>
+    <thead><tr><th>Created</th><th>File</th><th>Size</th><th></th></tr></thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td>{{ b.created|watdt }}</td>
+        <td>{{ b.name }}</td>
+        <td>{{ b.size_kb }} KB</td>
+        <td>
+          <a href="/backups/{{ b.name }}">Download</a> &middot;
+          <form class="inline" method="post" action="/app/backups/{{ b.name }}/delete"
+                onsubmit="return confirm('Delete this backup?')">
+            <button class="linkbtn" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No backups yet. Click "Back up now".</div>
+  {% endif %}
+</div>
+{% endblock %}

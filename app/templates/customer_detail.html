@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }} - {{ business }}{% endblock %}
+{% block content %}
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+
+<div class="page-head">
+  <h1>{{ customer.name }}</h1>
+  <div class="actions" style="margin-top:0">
+    <a class="btn" href="/app/orders/new?customer_id={{ customer.id }}">+ New order</a>
+    <a class="btn secondary" href="/app/customers/{{ customer.id }}/edit">Edit</a>
+    {% if user.role == "admin" and not orders %}
+    <form method="post" action="/app/customers/{{ customer.id }}/delete"
+          onsubmit="return confirm('Delete this customer? This cannot be undone.')">
+      <button class="btn danger" type="submit">Delete</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card contact">
+  <p><a href="tel:{{ customer.phone }}">{{ customer.phone }}</a></p>
+  <p class="muted">{{ customer.address or "No address saved" }}</p>
+  <p class="muted">Customer since {{ customer.created_at|wat }}</p>
+</div>
+
+<h2>Summary</h2>
+<div class="grid">
+  <div class="card"><div class="label">Orders</div><div class="value">{{ orders|length }}</div></div>
+  <div class="card"><div class="label">Total billed</div><div class="value">{{ billed|naira }}</div></div>
+  <div class="card good"><div class="label">Total paid</div><div class="value">{{ paid|naira }}</div></div>
+  <div class="card {{ 'warn' if balance > 0 else '' }}"><div class="label">Balance owed</div><div class="value">{{ balance|naira }}</div></div>
+</div>
+
+<h2>Order history</h2>
+<div class="table-wrap">
+  {% if orders %}
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Invoice</th><th>Status</th><th>Total</th><th>Payment</th><th>Balance</th></tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td><a href="/app/orders/{{ o.id }}">{{ o.created_at|wat }}</a></td>
+        <td>
+          {% if o.invoice %}
+          <a href="/invoices/{{ o.invoice.invoice_number }}/pdf" target="_blank">{{ o.invoice.invoice_number }}</a>
+          {% else %}-{% endif %}
+        </td>
+        <td><span class="badge {{ o.status }}">{{ o.status|capitalize }}</span></td>
+        <td>{{ o.invoice.total|naira if o.invoice else "-" }}</td>
+        <td>{% if o.invoice %}<span class="badge {{ o.invoice.payment_status }}">{{ o.invoice.payment_status|replace("_", " ")|capitalize }}</span>{% endif %}</td>
+        <td>{{ o.invoice.balance|naira if o.invoice else "-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No orders yet for this customer.</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - {{ business }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="form-card">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="{{ action }}">
+    <label for="name">Name</label>
+    <input id="name" name="name" value="{{ values.name }}" required autofocus>
+
+    <label for="phone">Phone number</label>
+    <input id="phone" name="phone" type="tel" value="{{ values.phone }}" placeholder="08012345678" required>
+
+    <label for="address">Address (optional)</label>
+    <input id="address" name="address" value="{{ values.address }}">
+
+    <div class="actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn secondary" href="{{ cancel }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

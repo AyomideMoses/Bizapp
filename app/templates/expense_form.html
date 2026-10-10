@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - {{ business }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="form-card">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="{{ action }}">
+    <label for="category">Category</label>
+    <input id="category" name="category" list="cats" value="{{ values.category }}"
+           placeholder="e.g. detergent, electricity, salary" autocomplete="off" required autofocus>
+    <datalist id="cats">
+      {% for c in categories %}<option value="{{ c }}"></option>{% endfor %}
+      <option value="detergent"></option><option value="electricity"></option>
+      <option value="water"></option><option value="fuel"></option>
+      <option value="salary"></option><option value="rent"></option>
+      <option value="transport"></option><option value="repairs"></option>
+      <option value="packaging"></option>
+    </datalist>
+
+    <label for="description">Description (optional)</label>
+    <input id="description" name="description" value="{{ values.description }}">
+
+    <label for="amount">Amount (₦)</label>
+    <input id="amount" name="amount" type="number" min="1" step="1" inputmode="numeric"
+           value="{{ values.amount }}" required>
+
+    <label for="expense_date">Date</label>
+    <input id="expense_date" name="expense_date" type="date" value="{{ values.expense_date }}">
+
+    <div class="actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn secondary" href="/app/expenses">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

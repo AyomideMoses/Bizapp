@@ -1,0 +1,32 @@
+ {% extends "base.html" %}
+{% block title %}{{ label }} - {{ business }}{% endblock %}
+{% block content %}
+<h1>{{ label }}</h1>
+<p class="muted">
+  To <a href="/app/customers/{{ order.customer.id }}">{{ order.customer.name }}</a>
+  {% if number %}(+{{ number }}){% endif %}
+  &middot; <a href="/app/orders/{{ order.id }}">{{ order.invoice.invoice_number if order.invoice else "Order " ~ order.id }}</a>
+</p>
+
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+{% if not number %}
+<div class="error">
+  The phone number "{{ order.customer.phone }}" isn't in a format WhatsApp can use.
+  <a href="/app/customers/{{ order.customer.id }}/edit">Edit the customer's number</a>
+  (for example 08012345678).
+</div>
+{% else %}
+<div class="form-card wide">
+  <form method="post" action="/app/orders/{{ order.id }}/message/{{ kind }}" target="_blank">
+    <label for="message">Message (you can edit it before sending)</label>
+    <textarea id="message" name="message" rows="8" maxlength="1000">{{ text }}</textarea>
+    <div class="actions">
+      <button class="btn" type="submit">Open WhatsApp</button>
+      <a class="btn secondary" href="/app/orders/{{ order.id }}">Back to order</a>
+    </div>
+  </form>
+  <p class="muted">This opens WhatsApp in a new tab with the chat and message ready. Press Send inside WhatsApp to deliver it.</p>
+</div>
+{% endif %}
+{% endblock %}

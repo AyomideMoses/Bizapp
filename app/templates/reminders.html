@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Reminders - {{ business }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Reminders</h1>
+  <a class="btn secondary" href="/app/messages">Message log</a>
+</div>
+<div class="total-bar"><span>{{ rows|length }} unpaid invoice{{ '' if rows|length == 1 else 's' }}, oldest first</span><strong>{{ total|naira }}</strong></div>
+
+<div class="table-wrap">
+  {% if rows %}
+  <table>
+    <thead><tr><th>Invoice</th><th>Customer</th><th>Phone</th><th>Balance</th><th>Days</th><th>Last reminded</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><a href="/app/orders/{{ r.order_id }}">{{ r.invoice_number }}</a></td>
+        <td><a href="/app/customers/{{ r.customer_id }}">{{ r.customer_name }}</a></td>
+        <td>{{ r.phone }}</td>
+        <td>{{ r.balance|naira }}</td>
+        <td>{{ r.days }}</td>
+        <td>{{ r.last|wat if r.last else "Never" }}</td>
+        <td><a class="btn" href="/app/orders/{{ r.order_id }}/message/balance">Remind</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">Nobody owes you anything right now.</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text
+from sqlalchemy.orm import relationship
 from .database import Base
 from .utils import today_wat
 
@@ -88,3 +89,17 @@ class User(Base):
      role = Column(String, default="staff")        # admin or staff
      is_active = Column(Boolean, default=True)
      created_at = Column(DateTime, default=datetime.utcnow)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True)
+    order_id = Column(Integer, index=True)      # plain numbers on purpose, so the log
+    customer_id = Column(Integer, index=True)   # survives when orders or customers are deleted
+    customer_name = Column(String)
+    invoice_number = Column(String)
+    kind = Column(String, nullable=False)       # received, ready, receipt, balance, delayed
+    channel = Column(String, default="whatsapp_link")
+    phone = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    sent_by = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)

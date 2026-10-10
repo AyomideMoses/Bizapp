@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Users - {{ business }}{% endblock %}
+{% block content %}
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+<div class="page-head">
+  <h1>Users</h1>
+  <a class="btn" href="/app/users/new">+ Add user</a>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.username }}{% if u.id == user.id %} <span class="muted">(you)</span>{% endif %}</td>
+        <td>{{ u.full_name }}</td>
+        <td><span class="badge {{ 'ready' if u.role == 'admin' else 'received' }}">{{ u.role|capitalize }}</span></td>
+        <td><span class="badge {{ 'paid' if u.is_active else 'unpaid' }}">{{ 'Active' if u.is_active else 'Deactivated' }}</span></td>
+        <td><a href="/app/users/{{ u.id }}/edit">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ business }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/app">{{ business }}</a>
+        
+        <nav>
+      <a href="/app" class="{{ 'active' if page == 'dashboard' }}">Dashboard</a>
+      <a href="/app/orders" class="{{ 'active' if page == 'orders' }}">Orders</a>
+      <a href="/app/customers" class="{{ 'active' if page == 'customers' }}">Customers</a>
+      <a href="/app/orders/new" class="{{ 'active' if page == 'new_order' }}">New order</a>
+      <a href="/app/reminders" class="{{ 'active' if page == 'reminders' }}">Reminders</a>
+      {% if user.role == "admin" %}
+      <a href="/app/expenses" class="{{ 'active' if page == 'expenses' }}">Expenses</a>
+      <a href="/app/reports" class="{{ 'active' if page == 'reports' }}">Reports</a>
+      <a href="/app/users" class="{{ 'active' if page == 'users' }}">Users</a>
+      <a href="/app/backups" class="{{ 'active' if page == 'backups' }}">Backups</a>
+      {% endif %}
+    </nav>
+    
+    <form method="post" action="/logout">
+      <button class="link">Log out ({{ user.username }})</button>
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

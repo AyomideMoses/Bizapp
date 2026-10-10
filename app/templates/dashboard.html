@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - {{ business }}{% endblock %}
+{% block content %}
+<h1>Hello, {{ user.full_name.split()[0] }}</h1>
+
+{% if data.today %}
+<div class="grid">
+  <div class="card good"><div class="label">Today's revenue</div><div class="value">{{ data.today.revenue|naira }}</div></div>
+  <div class="card"><div class="label">Orders today</div><div class="value">{{ data.today.orders_received }}</div></div>
+  <div class="card warn"><div class="label">Owed to you</div><div class="value">{{ data.outstanding.total_balance|naira }}</div></div>
+  <div class="card warn"><div class="label">Overdue orders</div><div class="value">{{ data.overdue_orders }}</div></div>
+</div>
+
+<h2>This month</h2>
+<div class="grid">
+  <div class="card"><div class="label">Revenue</div><div class="value">{{ data.this_month.revenue|naira }}</div></div>
+  <div class="card"><div class="label">Expenses</div><div class="value">{{ data.this_month.expenses|naira }}</div></div>
+  <div class="card {{ 'good' if data.this_month.profit >= 0 else 'warn' }}">
+    <div class="label">Profit</div><div class="value">{{ data.this_month.profit|naira }}</div>
+  </div>
+</div>
+{% else %}
+<div class="grid">
+  <div class="card warn"><div class="label">Overdue orders</div><div class="value">{{ data.overdue_orders }}</div></div>
+</div>
+{% endif %}
+
+<h2>Orders by status</h2>
+<div class="grid">
+  {% for status, count in data.orders_by_status.items() %}
+  <div class="card"><div class="label"><span class="badge {{ status }}">{{ status|capitalize }}</span></div>
+    <div class="value">{{ count }}</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

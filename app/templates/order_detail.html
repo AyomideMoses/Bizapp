@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Order {{ invoice.invoice_number if invoice else order.id }} - {{ business }}{% endblock %}
+{% block content %}
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<div class="page-head">
+  <h1>{{ invoice.invoice_number if invoice else "Order " ~ order.id }}</h1>
+  <div class="actions" style="margin-top:0">
+    {% if invoice %}
+    <a class="btn secondary" href="/invoices/{{ invoice.invoice_number }}/pdf" target="_blank">Invoice PDF</a>
+    {% endif %}
+    {% if user.role == "admin" %}
+    <a class="btn secondary" href="/app/orders/{{ order.id }}/edit">Edit order</a>
+    <form method="post" action="/app/orders/{{ order.id }}/delete"
+          onsubmit="return confirm('Delete this order, its invoice and all its payments? This cannot be undone.')">
+      <button class="btn danger" type="submit">Delete</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card contact">
+  <p><strong><a href="/app/customers/{{ order.customer.id }}">{{ order.customer.name }}</a></strong>
+     - <a href="tel:{{ order.customer.phone }}">{{ order.customer.phone }}</a></p>
+  <p class="muted">Received {{ order.created_at|watdt }}</p>
+  <p class="muted">Ready by {{ order.due_date|dt if order.due_date else "not set" }}
+    {% if is_overdue(order) %}<span class="badge unpaid">Overdue</span>{% endif %}</p>
+</div>
+
+<h2>Status</h2>
+<form method="post" action="/app/orders/{{ order.id }}/status" class="status-row">
+  {% for s in statuses %}
+  <button name="status" value="{{ s }}" class="btn {{ '' if order.status == s else 'secondary' }}"
+          {{ 'disabled' if order.status == s }}>{{ s|capitalize }}</button>
+  {% endfor %}
+</form>
+{% if order.status == "delivered" and invoice and invoice.balance > 0 %}
+<div class="error" style="margin-top:10px">This order was delivered but {{ invoice.balance|naira }} is still unpaid.</div>
+{% endif %}
+
+<h2>Garments</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Garment</th><th>Service</th><th>Qty</th><th>Price</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for i in order.items %}
+      <tr>
+        <td>{{ i.garment }}{% if i.notes %}<br><span class="muted">{{ i.notes }}</span>{% endif %}</td>
+        <td>{{ service_labels.get(i.service, i.service) }}</td>
+        <td>{{ i.quantity }}</td>
+        <td>{{ i.unit_price|naira }}</td>
+        <td>{{ (i.quantity * i.unit_price)|naira }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if invoice %}
+<h2>Payment</h2>
+<div class="grid">
+  <div class="card"><div class="label">Total</div><div class="value">{{ invoice.total|naira }}</div></div>
+  <div class="card good"><div class="label">Paid</div><div class="value">{{ invoice.amount_paid|naira }}</div></div>
+  <div class="card {{ 'warn' if invoice.balance > 0 else 'good' }}"><div class="label">Balance</div>
+    <div class="value">{{ invoice.balance|naira }}</div></div>
+  <div class="card"><div class="label">Status</div>
+    <div class="value"><span class="badge {{ invoice.payment_status }}">{{ invoice.payment_status|replace("_", " ")|capitalize }}</span></div></div>
+</div>
+
+{% if invoice.payments %}
+<h2>Payments received</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead>
+    <tbody>
+      {% for p in invoice.payments|sort(attribute="id") %}
+      <tr>
+        <td>{{ p.paid_at|watdt }}</td>
+        <td>{{ p.method|capitalize }}</td>
+        <td>{{ p.reference or "-" }}</td>
+        <td>{{ p.amount|naira }}</td>
+        <td>
+          <a href="/payments/{{ p.id }}/receipt" target="_blank">Receipt PDF</a>
+          {% if user.role == "admin" %}
+          &middot; <a href="/app/payments/{{ p.id }}/edit">Edit</a>
+          &middot;
+          <form class="inline" method="post" action="/app/payments/{{ p.id }}/delete"
+                onsubmit="return confirm('Delete this payment? The balance will go back up.')">
+            <button class="linkbtn" type="submit">Delete</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if invoice.balance > 0 %}
+<h2>Record a payment</h2>
+<div class="form-card">
+  <form method="post" action="/app/orders/{{ order.id }}/payment">
+    <label for="amount">Amount (₦)</label>
+    <input id="amount" name="amount" type="number" min="1" max="{{ invoice.balance }}" step="1"
+           inputmode="numeric" value="{{ form.amount }}" required>
+    <div class="actions" style="margin-top:8px">
+      <button type="button" class="btn secondary"
+              onclick="document.getElementById('amount').value = { invoice, balance }">Full balance ({{ invoice.balance|naira }})</button>
+    </div>
+
+    <label for="method">Paid by</label>
+    <select id="method" name="method">
+      {% for key, label in methods %}
+      <option value="{{ key }}" {{ 'selected' if form.method == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="reference">Reference (optional)</label>
+    <input id="reference" name="reference" value="{{ form.reference }}" placeholder="Transfer reference">
+
+    <div class="actions"><button class="btn" type="submit">Record payment</button></div>
+  </form>
+</div>
+<h2>Message the customer</h2>
+<div class="actions" style="margin-top:0">
+  <a class="btn secondary" href="/app/orders/{{ order.id }}/message/received">Order received</a>
+  <a class="btn secondary" href="/app/orders/{{ order.id }}/message/ready">Ready for pickup</a>
+  {% if invoice and invoice.payments %}
+  <a class="btn secondary" href="/app/orders/{{ order.id }}/message/receipt">Payment receipt</a>
+  {% endif %}
+  {% if invoice and invoice.balance > 0 %}
+  <a class="btn secondary" href="/app/orders/{{ order.id }}/message/balance">Balance reminder</a>
+  {% endif %}
+  <a class="btn secondary" href="/app/orders/{{ order.id }}/message/delayed">Delay notice</a>
+</div>
+
+{% set log = order_log(order.id) %}
+{% if log %}
+<h2>Messages sent</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Time</th><th>Type</th><th>By</th></tr></thead>
+    <tbody>
+      {% for m in log %}
+      <tr><td>{{ m.created_at|watdt }}</td><td>{{ kind_labels.get(m.kind, m.kind) }}</td><td>{{ m.sent_by }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}
