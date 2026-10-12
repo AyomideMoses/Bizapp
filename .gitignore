@@ -4,3 +4,5 @@
 .env.*
 !.env.example
 .env
+venv
+bizapp.db
