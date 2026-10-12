@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Log in - {{ business }}</title>
@@ -8,7 +9,7 @@
 </head>
 <body>
   <div class="login-box">
-    <h1>{{ business }}</h1>
+    <img class="login-logo" src="/static/logo.png" alt="{{ business }}">
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <form method="post" action="/login">
       <label for="username">Username</label>

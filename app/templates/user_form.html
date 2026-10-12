@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - {{ business }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="form-card">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="{{ action }}">
+    {% if mode == "create" %}
+    <label for="username">Username</label>
+    <input id="username" name="username" value="{{ values.username }}" autocapitalize="none"
+           autocomplete="off" required autofocus>
+    {% else %}
+    <label>Username</label>
+    <input value="{{ target.username }}" disabled>
+    {% endif %}
+
+    <label for="full_name">Full name</label>
+    <input id="full_name" name="full_name" value="{{ values.full_name }}" required>
+
+    {% if mode == "create" %}
+    <label for="password">Password (8 to 64 characters)</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" required>
+    {% endif %}
+
+    <label for="role">Role</label>
+    <select id="role" name="role" {{ 'disabled' if is_self }}>
+      <option value="staff" {{ 'selected' if values.role == 'staff' }}>Staff</option>
+      <option value="admin" {{ 'selected' if values.role == 'admin' }}>Admin</option>
+    </select>
+
+    {% if mode == "edit" %}
+    <label for="is_active">Status</label>
+    <select id="is_active" name="is_active" {{ 'disabled' if is_self }}>
+      <option value="1" {{ 'selected' if values.is_active == '1' }}>Active</option>
+      <option value="0" {{ 'selected' if values.is_active == '0' }}>Deactivated (cannot log in)</option>
+    </select>
+    {% if is_self %}<p class="muted">You can't change your own role or status.</p>{% endif %}
+    {% endif %}
+
+    <div class="actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn secondary" href="/app/users">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% if mode == "edit" %}
+<h2>Reset password</h2>
+<div class="form-card">
+  <form method="post" action="/app/users/{{ target.id }}/password">
+    <label for="new_password">New password (8 to 64 characters)</label>
+    <input id="new_password" name="new_password" type="password" autocomplete="new-password" required>
+    <div class="actions"><button class="btn secondary" type="submit">Set new password</button></div>
+  </form>
+</div>
+
+{% if not is_self %}
+<div class="danger-zone">
+  <form method="post" action="/app/users/{{ target.id }}/delete"
+        onsubmit="return confirm('Delete this user? This cannot be undone. To keep the account but block login, deactivate it instead.')">
+    <button class="btn danger" type="submit">Delete user</button>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

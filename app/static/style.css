@@ -108,3 +108,21 @@ button.linkbtn { background: none; border: 0; color: #dc2626; cursor: pointer;
   .topbar, .filters, .chips, .no-print { display: none !important; }
   body { background: #fff; }
 }
+textarea { font-family: inherit; min-height: 140px; resize: vertical; }
+/* Branding */
+.login-logo { display: block; width: 220px; max-width: 70%; height: auto; margin: 0 auto 12px; }
+
+.topbar { background: #fff; color: #052963; border-bottom: 1px solid #e5e7eb; }
+.topbar .brand { color: #052963; display: flex; align-items: center; gap: 10px; }
+.topbar .brand img { height: 38px; width: auto; }
+.topbar nav a { color: #374151; }
+.topbar nav a.active, .topbar nav a:hover { background: #e0e7ff; color: #052963; }
+.topbar button.link, .userbar a { color: #374151; }
+
+.btn { background: #052963; }
+.btn:hover { background: #0a3a85; }
+.btn.secondary { background: #e5e7eb; color: #1f2937; }
+.btn.secondary:hover { background: #d1d5db; }
+.btn.danger { background: #dc2626; }
+
+@media (max-width: 600px) { .topbar .brand span { display: none; } }

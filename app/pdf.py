@@ -1,3 +1,5 @@
+from pathlib import Path
+from reportlab.lib.utils import ImageReader
 from io import BytesIO
 from xml.sax.saxutils import escape
 from reportlab.lib import colors
@@ -31,12 +33,31 @@ def naira(amount: int) -> str:
 def stamp(dt) -> str:
     return (dt + WAT).strftime("%d %b %Y, %I:%M %p")   # UTC -> Nigerian time
 
+LOGO = Path(__file__).parent / "static" / "logo.png"
+
+def logo_image(height=24 * mm):
+    if not LOGO.exists():
+        return None
+    w, h = ImageReader(str(LOGO)).getSize()
+    image = Image(str(LOGO), width=height * w / h, height=height)
+    image.hAlign = "LEFT"
+    return image
+
 def header(title: str):
-    left = [
-        Paragraph(escape(config.BUSINESS_NAME), biz_style),
+    logo = logo_image()
+    left = [logo, Spacer(1, 4)] if logo else [Paragraph(escape(config.BUSINESS_NAME), biz_style)]
+    left += [
         Paragraph(escape(config.BUSINESS_ADDRESS), small),
         Paragraph(escape(config.BUSINESS_PHONE), small),
     ]
+    table = Table([[left, Paragraph(title, title_style)]], colWidths=[100 * mm, 70 * mm])
+    table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LINEBELOW", (0, 0), (-1, 0), 1, colors.black),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+    ]))
+    return [table, Spacer(1, 8)]   
+    
     table = Table([[left, Paragraph(title, title_style)]], colWidths=[100 * mm, 70 * mm])
     table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),

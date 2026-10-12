@@ -73,13 +73,11 @@ class Payment(Base):
 class Expense(Base):
     __tablename__ = "expenses"
     id = Column(Integer, primary_key=True)
-    category = Column(String, nullable=False)         # detergent, electricity, salary...
+    category = Column(String, nullable=False)
     description = Column(String)
-    amount = Column(Integer, nullable=False)          # naira
+    amount = Column(Integer, nullable=False)
     expense_date = Column(Date, default=today_wat)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
 class User(Base):
      __tablename__ = "users"
      id = Column(Integer, primary_key=True)
