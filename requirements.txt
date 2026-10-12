@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+SQLAlchemy
+python-dotenv
+PyJWT
+bcrypt
+python-multipart
+Jinja2
+reportlab
+Pillow

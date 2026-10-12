@@ -6,3 +6,19 @@
 .env
 venv
 bizapp.db
+
+# Python environment and generated files
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local database and backups
+bizapp.db
+*.db
+backups/
+
+# Secrets
+.env
+.env.*
+!.env.example
