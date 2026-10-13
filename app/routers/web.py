@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .. import config, models
 from ..database import get_db
 from ..security import verify_password, create_token, user_from_token
-from ..utils import WAT
+from ..utils import WAT, now_wat
 from . import dashboard as dash
 
 BASE = Path(__file__).resolve().parent.parent
@@ -64,10 +64,14 @@ def home(request: Request, user=Depends(web_user), db: Session = Depends(get_db)
     if user.role != "admin":      # staff don't see money figures
         data = {"orders_by_status": data["orders_by_status"],
                 "overdue_orders": data["overdue_orders"]}
+    hour = now_wat().hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
+    recent = db.query(models.Order).order_by(models.Order.created_at.desc()).limit(5).all()
     return templates.TemplateResponse(
-        request, "dashboard.html", {"user": user, "data": data, "page": "dashboard"}
+        request, "dashboard.html",
+        {"user": user, "data": data, "page": "dashboard", "greeting": greeting, "recent": recent},
     )
-
+    
 # ---------- Customers ----------
 
 MESSAGES = {

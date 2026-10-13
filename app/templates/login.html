@@ -1,23 +1,44 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <link rel="icon" type="image/png" href="/static/favicon.png">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
   <title>Log in - {{ business }}</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="login-box">
+{% from "_icons.html" import icon %}
+<div class="login-page">
+  <div class="login-wrap">
     <img class="login-logo" src="/static/logo.png" alt="{{ business }}">
+    <h1>Welcome back</h1>
+    <p class="sub">Log in to manage your laundry orders.</p>
+
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
     <form method="post" action="/login">
       <label for="username">Username</label>
-      <input id="username" name="username" autocomplete="username" autocapitalize="none" required autofocus>
+      <div class="field-icon">
+        {{ icon('user', 20) }}
+        <input id="username" name="username" autocomplete="username" autocapitalize="none"
+               placeholder="Your username" required autofocus>
+      </div>
+
       <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <div class="field-icon">
+        {{ icon('lock', 20) }}
+        <input id="password" name="password" type="password" autocomplete="current-password"
+               placeholder="Your password" required>
+        <button type="button" class="toggle" aria-label="Show or hide password"
+                onclick="var p=document.getElementById('password'); p.type = p.type === 'password' ? 'text' : 'password';">{{ icon('eye', 20) }}</button>
+      </div>
+
       <button class="btn" type="submit">Log in</button>
     </form>
+    <p class="login-note">Forgot your password? Ask your admin to reset it.</p>
   </div>
+</div>
 </body>
 </html>

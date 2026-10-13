@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}More - {{ business }}{% endblock %}
+{% block content %}
+{% from "_icons.html" import icon %}
+
+<div class="profile-head">
+  <div class="avatar-lg">{{ user.full_name[:1]|upper }}</div>
+  <div>
+    <strong style="font-size:1.15rem">{{ user.full_name }}</strong><br>
+    <span style="opacity:.85">{{ user.username }} &middot; {{ user.role|capitalize }}</span>
+  </div>
+</div>
+
+<div class="menu-list">
+  <a href="/app/reminders">{{ icon('bell') }}<span>Reminders</span><span class="chev">{{ icon('chev', 20) }}</span></a>
+  <a href="/app/messages">{{ icon('chat') }}<span>Message log</span><span class="chev">{{ icon('chev', 20) }}</span></a>
+  <a href="/app/account">{{ icon('user') }}<span>My account</span><span class="chev">{{ icon('chev', 20) }}</span></a>
+  {% if user.role == "admin" %}
+  <a href="/app/expenses">{{ icon('card') }}<span>Expenses</span><span class="chev">{{ icon('chev', 20) }}</span></a>
+  <a href="/app/reports">{{ icon('chart') }}<span>Reports</span><span class="chev">{{ icon('chev', 20) }}</span></a>
+  <a href="/app/users">{{ icon('users') }}<span>Users</span><span class="chev">{{ icon('chev', 20) }}</span></a>
+  <a href="/app/backups">{{ icon('database') }}<span>Backups</span><span class="chev">{{ icon('chev', 20) }}</span></a>
+  {% endif %}
+  <form method="post" action="/logout"><button type="submit">{{ icon('logout') }}<span>Log out</span></button></form>
+</div>
+{% endblock %}

@@ -1,17 +1,35 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - {{ business }}{% endblock %}
+{% block title %}Home - {{ business }}{% endblock %}
 {% block content %}
-<h1>Hello, {{ user.full_name.split()[0] }}</h1>
+{% from "_icons.html" import icon %}
+
+<div class="greeting">
+  <small>{{ greeting }},</small>
+  <strong>{{ (user.full_name.split() or [user.username])[0] }}</strong>
+</div>
+
+<div class="hero">
+  <h2>Fresh clothes. A better you.</h2>
+  <a class="btn" href="/app/orders/new">{{ icon('plus', 20) }} New order</a>
+</div>
+
+<div class="tiles">
+  <a class="tile" href="/app/orders/new"><span class="ico">{{ icon('plus') }}</span>New order</a>
+  <a class="tile" href="/app/orders"><span class="ico">{{ icon('list') }}</span>Orders</a>
+  <a class="tile" href="/app/customers"><span class="ico">{{ icon('users') }}</span>Customers</a>
+  <a class="tile" href="/app/reminders"><span class="ico">{{ icon('bell') }}</span>Reminders</a>
+</div>
 
 {% if data.today %}
+<div class="section-head"><h2>Today</h2></div>
 <div class="grid">
-  <div class="card good"><div class="label">Today's revenue</div><div class="value">{{ data.today.revenue|naira }}</div></div>
+  <div class="card good"><div class="label">Revenue</div><div class="value">{{ data.today.revenue|naira }}</div></div>
   <div class="card"><div class="label">Orders today</div><div class="value">{{ data.today.orders_received }}</div></div>
   <div class="card warn"><div class="label">Owed to you</div><div class="value">{{ data.outstanding.total_balance|naira }}</div></div>
   <div class="card warn"><div class="label">Overdue orders</div><div class="value">{{ data.overdue_orders }}</div></div>
 </div>
 
-<h2>This month</h2>
+<div class="section-head"><h2>This month</h2><a href="/app/reports">Reports</a></div>
 <div class="grid">
   <div class="card"><div class="label">Revenue</div><div class="value">{{ data.this_month.revenue|naira }}</div></div>
   <div class="card"><div class="label">Expenses</div><div class="value">{{ data.this_month.expenses|naira }}</div></div>
@@ -20,16 +38,36 @@
   </div>
 </div>
 {% else %}
+<div class="section-head"><h2>Today</h2></div>
 <div class="grid">
   <div class="card warn"><div class="label">Overdue orders</div><div class="value">{{ data.overdue_orders }}</div></div>
 </div>
 {% endif %}
 
-<h2>Orders by status</h2>
+<div class="section-head"><h2>Orders by status</h2><a href="/app/orders">View all</a></div>
 <div class="grid">
   {% for status, count in data.orders_by_status.items() %}
-  <div class="card"><div class="label"><span class="badge {{ status }}">{{ status|capitalize }}</span></div>
-    <div class="value">{{ count }}</div></div>
+  <a class="card" href="/app/orders?status={{ status }}">
+    <div class="label"><span class="badge {{ status }}">{{ status|capitalize }}</span></div>
+    <div class="value">{{ count }}</div>
+  </a>
   {% endfor %}
 </div>
+
+<div class="section-head"><h2>Recent orders</h2><a href="/app/orders">View all</a></div>
+{% for o in recent %}
+<a class="order-card" href="/app/orders/{{ o.id }}">
+  <div class="row">
+    <span class="num">{{ o.invoice.invoice_number if o.invoice else "Order " ~ o.id }}</span>
+    <span class="badge {{ o.status }}">{{ o.status|capitalize }}</span>
+  </div>
+  <div class="meta">{{ o.customer.name }} &middot; {{ o.created_at|wat }}</div>
+  <div class="foot">
+    <span>{{ o.items|length }} item{{ '' if o.items|length == 1 else 's' }}</span>
+    <strong>{{ o.invoice.total|naira if o.invoice else "" }}</strong>
+  </div>
+</a>
+{% else %}
+<div class="card empty">No orders yet. Tap New order to start.</div>
+{% endfor %}
 {% endblock %}

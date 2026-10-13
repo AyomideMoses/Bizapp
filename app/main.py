@@ -9,7 +9,7 @@ from .security import hash_password
 from .security import get_current_user, require_admin
 from .routers import (
     customers, orders, invoices, payments, expenses,
-    dashboard, auth, users, backups, web, web_orders, web_admin, web_messages
+    dashboard, auth, users, backups, web, web_orders, web_admin, web_messages, web_account,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -58,6 +58,7 @@ app.include_router(web.router)
 app.include_router(web_orders.router)
 app.include_router(web_admin.router)
 app.include_router(web_messages.router)
+app.include_router(web_account.router)
 # Open to anyone: API login only
 app.include_router(auth.router)
 

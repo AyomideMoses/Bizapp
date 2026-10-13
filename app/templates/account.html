@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}My account - {{ business }}{% endblock %}
+{% block content %}
+<h1>My account</h1>
+<div class="card contact">
+  <p><strong>{{ user.full_name }}</strong></p>
+  <p class="muted">Username: {{ user.username }} &middot; Role: {{ user.role|capitalize }}</p>
+</div>
+
+<h2>Change password</h2>
+<div class="form-card">
+  {% if message %}<div class="success">{{ message }}</div>{% endif %}
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/app/account/password">
+    <label for="old_password">Current password</label>
+    <input id="old_password" name="old_password" type="password" autocomplete="current-password" required>
+
+    <label for="new_password">New password (8 to 64 characters)</label>
+    <input id="new_password" name="new_password" type="password" autocomplete="new-password" required>
+
+    <label for="confirm">Confirm new password</label>
+    <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>
+
+    <div class="actions"><button class="btn" type="submit">Change password</button></div>
+  </form>
+</div>
+{% endblock %}

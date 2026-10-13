@@ -2,34 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#052963">
   <title>{% block title %}{{ business }}{% endblock %}</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header class="topbar">
-      <a class="brand" href="/app"><img src="/static/logo-mark.png" alt=""><span>{{ business }}</span></a>
-        
-        <nav>
-      <a href="/app" class="{{ 'active' if page == 'dashboard' }}">Dashboard</a>
-      <a href="/app/orders" class="{{ 'active' if page == 'orders' }}">Orders</a>
-      <a href="/app/customers" class="{{ 'active' if page == 'customers' }}">Customers</a>
-      <a href="/app/orders/new" class="{{ 'active' if page == 'new_order' }}">New order</a>
-      <a href="/app/reminders" class="{{ 'active' if page == 'reminders' }}">Reminders</a>
-      {% if user.role == "admin" %}
-      <a href="/app/expenses" class="{{ 'active' if page == 'expenses' }}">Expenses</a>
-      <a href="/app/reports" class="{{ 'active' if page == 'reports' }}">Reports</a>
-      <a href="/app/users" class="{{ 'active' if page == 'users' }}">Users</a>
-      <a href="/app/backups" class="{{ 'active' if page == 'backups' }}">Backups</a>
-      {% endif %}
-    </nav>
-    
-    <form method="post" action="/logout">
-      <button class="link">Log out ({{ user.username }})</button>
-    </form>
-  </header>
-  <main>
-    {% block content %}{% endblock %}
-  </main>
+{% from "_icons.html" import icon %}
+{% set more_pages = ['more', 'expenses', 'reports', 'users', 'backups', 'reminders', 'account'] %}
+
+<header class="topbar">
+  <a class="brand" href="/app"><img src="/static/logo-mark.png" alt=""><span>{{ business }}</span></a>
+  <nav class="desknav">
+    <a href="/app" class="{{ 'active' if page == 'dashboard' }}">Home</a>
+    <a href="/app/orders" class="{{ 'active' if page == 'orders' }}">Orders</a>
+    <a href="/app/customers" class="{{ 'active' if page == 'customers' }}">Customers</a>
+    <a href="/app/orders/new" class="{{ 'active' if page == 'new_order' }}">New order</a>
+    <a href="/app/reminders" class="{{ 'active' if page == 'reminders' }}">Reminders</a>
+    {% if user.role == "admin" %}
+    <a href="/app/expenses" class="{{ 'active' if page == 'expenses' }}">Expenses</a>
+    <a href="/app/reports" class="{{ 'active' if page == 'reports' }}">Reports</a>
+    <a href="/app/users" class="{{ 'active' if page == 'users' }}">Users</a>
+    <a href="/app/backups" class="{{ 'active' if page == 'backups' }}">Backups</a>
+    {% endif %}
+  </nav>
+  <div class="userbar">
+    <a class="avatar" href="/app/account" title="My account">{{ user.full_name[:1]|upper }}</a>
+    <form class="logout" method="post" action="/logout"><button class="link">Log out</button></form>
+  </div>
+</header>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab {{ 'active' if page == 'dashboard' }}" href="/app">{{ icon('home', 24) }}<span>Home</span></a>
+  <a class="tab {{ 'active' if page == 'orders' }}" href="/app/orders">{{ icon('list', 24) }}<span>Orders</span></a>
+  <a class="tab plus" href="/app/orders/new"><span class="fab">{{ icon('plus', 26) }}</span><span>New</span></a>
+  <a class="tab {{ 'active' if page == 'customers' }}" href="/app/customers">{{ icon('users', 24) }}<span>Customers</span></a>
+  <a class="tab {{ 'active' if page in more_pages }}" href="/app/more">{{ icon('grid', 24) }}<span>More</span></a>
+</nav>
 </body>
 </html>
