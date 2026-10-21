@@ -8,3 +8,4 @@ python-multipart
 Jinja2
 reportlab
 Pillow
+psycopg[binary]
