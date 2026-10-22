@@ -16,6 +16,7 @@ MESSAGES = {
     "updated": "Order updated.",
     "payment_updated": "Payment updated.",
     "payment_deleted": "Payment deleted.",
+    "carry_removed": "Brought-forward balance removed.",
 }
 
 def is_overdue(order) -> bool:
@@ -52,7 +53,7 @@ def orders_page(request: Request, status: str = "", pay: str = "", q: str = "",
             | models.Customer.phone.contains(term)
             | models.Invoice.invoice_number.ilike(f"%{term}%")
         )
-    orders = query.order_by(models.Order.created_at.desc()).limit(300).all()
+    orders = [o for o in orders if o.invoice and o.invoice.payment_status == "paid"]
 
     if pay == "unpaid":
         orders = [o for o in orders if o.invoice and o.invoice.balance > 0]
@@ -198,11 +199,13 @@ def order_update(
         return fail(error)
 
     new_total = sum(i["quantity"] * i["unit_price"] for i in items)
-    if order.invoice and new_total < order.invoice.amount_paid:
-        return fail(
-            f"The new total (₦{new_total:,}) is less than the ₦{order.invoice.amount_paid:,} "
-            "already paid. Edit or delete the payments first."
-        )
+    if order.invoice:
+        payable_after = new_total + order.invoice.carried_in - order.invoice.carried_out
+        if payable_after < order.invoice.amount_paid:
+            return fail(
+                f"The new total would be ₦{payable_after:,}, which is less than the "
+                f"₦{order.invoice.amount_paid:,} already paid. Edit or delete the payments first."
+            )
 
     order.customer_id = customer.id
     order.due_date = due
@@ -215,17 +218,42 @@ def order_update(
     return RedirectResponse(f"/app/orders/{order.id}?msg=updated", status_code=303)
 
 @router.post("/app/orders/{order_id:int}/delete")
-def order_delete(order_id: int, user=Depends(web_admin), db: Session = Depends(get_db)):
+def order_delete(request: Request, order_id: int, user=Depends(web_admin),
+                 db: Session = Depends(get_db)):
     order = db.get(models.Order, order_id)
     if not order:
         raise HTTPException(404, "Order not found")
+    if order.invoice and order.invoice.carry_outs:
+        targets = ", ".join(sorted({c.to_invoice.invoice_number for c in order.invoice.carry_outs}))
+        return order_page(
+            request, user, order, status=400,
+            error=f"Part of this invoice's debt was carried forward to {targets}. "
+                  "Remove the brought-forward balance there (or delete that invoice) first.",
+        )
     customer_id = order.customer_id
     if order.invoice:
-        db.delete(order.invoice)      # its payments are deleted with it
-    db.delete(order)                  # its garments are deleted with it
+        db.delete(order.invoice)      # its payments and brought-forward lines go with it
+    db.delete(order)
     db.commit()
     return RedirectResponse(f"/app/customers/{customer_id}?msg=order_deleted", status_code=303)
 
+@router.post("/app/orders/{order_id:int}/carry/remove")
+def carry_remove(request: Request, order_id: int, user=Depends(web_admin),
+                 db: Session = Depends(get_db)):
+    order = db.get(models.Order, order_id)
+    if not order or not order.invoice:
+        raise HTTPException(404, "Order not found")
+    invoice = order.invoice
+    if invoice.total - invoice.carried_out < invoice.amount_paid:
+        return order_page(
+            request, user, order, status=400,
+            error="Payments already received on this invoice are more than it would owe without "
+                  "the brought-forward balance. Edit or delete those payments first.",
+        )
+    for line in list(invoice.carry_ins):
+        db.delete(line)
+    db.commit()
+    return RedirectResponse(f"/app/orders/{order.id}?msg=carry_removed", status_code=303)
 # ---------- Admin: edit and delete a payment ----------
 
 def payment_page(request, user, payment, form, error=None, status=200):
@@ -265,7 +293,7 @@ def payment_update(request: Request, payment_id: int, amount: str = Form(""),
         return fail("Enter the amount as a whole number of naira.")
     if value < 1:
         return fail("The amount must be more than 0.")
-    room = invoice.total - (invoice.amount_paid - payment.amount)
+    room = invoice.payable - (invoice.amount_paid - payment.amount)
     if value > room:
         return fail(f"The most this payment can be is ₦{room:,}.")
     if method not in METHOD_KEYS:

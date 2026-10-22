@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from .. import config, models
+from .. import config, models, ratelimit, debts
 from ..database import get_db
 from ..security import verify_password, create_token, user_from_token
 from ..utils import WAT, now_wat
@@ -199,7 +199,8 @@ def order_form(request, user, db, rows, customer_id=0, due_date="", error=None, 
     return templates.TemplateResponse(
         request, "order_form.html",
         {"user": user, "page": "new_order", "customers": customers, "rows": rows,
-         "customer_id": customer_id, "due_date": due_date, "services": SERVICES, "error": error},
+         "customer_id": customer_id, "due_date": due_date, "services": SERVICES, "error": error,
+          "debts": debts.debts_by_customer(db)},
         status_code=status,
     )
 
@@ -240,6 +241,7 @@ def order_create(
     request: Request,
     customer_id: int = Form(0),
     due_date: str = Form(""),
+    carry_forward: str = Form(""),
     garment: list[str] = Form([]),
     service: list[str] = Form([]),
     quantity: list[str] = Form([]),
@@ -278,6 +280,9 @@ def order_create(
         invoice_number=next_invoice_number(db),
         total=sum(i["quantity"] * i["unit_price"] for i in items),
     )
+    if carry_forward == "1":
+        for old in debts.open_invoices(db, customer.id):
+            db.add(models.CarryForward(from_invoice=old, to_invoice=order.invoice, amount=old.balance))
     db.add(order)
     db.commit()
     return RedirectResponse(f"/app/customers/{customer.id}?msg=order", status_code=303)

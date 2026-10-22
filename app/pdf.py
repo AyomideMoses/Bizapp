@@ -23,8 +23,10 @@ SERVICE_LABELS = {
     "wash_iron": "Wash & Iron",
     "dry_clean": "Dry clean",
 }
-STATUS_LABELS = {"paid": "PAID", "part_paid": "PART PAID", "unpaid": "UNPAID"}
-STATUS_COLORS = {"paid": colors.green, "part_paid": colors.orange, "unpaid": colors.red}
+STATUS_LABELS = {"paid": "PAID", "part_paid": "PART PAID", "unpaid": "UNPAID",
+                 "carried_forward": "CARRIED FORWARD"}
+STATUS_COLORS = {"paid": colors.green, "part_paid": colors.orange, "unpaid": colors.red,
+                 "carried_forward": colors.HexColor("#5b21b6")}
 
 def naira(amount: int) -> str:
     # "NGN" is used because the built-in PDF fonts don't include the ₦ symbol
@@ -127,15 +129,37 @@ def invoice_pdf(invoice) -> bytes:
     story += [items, Spacer(1, 8)]
 
     status = invoice.payment_status
-    totals = Table([
-        ["Total", naira(invoice.total)],
-        ["Amount paid", naira(invoice.amount_paid)],
-        ["Balance due", naira(invoice.balance)],
-    ], colWidths=[40 * mm, 40 * mm], hAlign="RIGHT")
+
+    if invoice.carry_ins:
+        story.append(Paragraph("Previous unpaid balance brought forward", heading))
+        brought = [["From invoice", "Date", "Amount"]]
+        for c in sorted(invoice.carry_ins, key=lambda c: c.id):
+            old = c.from_invoice
+            brought.append([old.invoice_number, (old.created_at + WAT).strftime("%d %b %Y"), naira(c.amount)])
+        bt = Table(brought, colWidths=[55 * mm, 45 * mm, 35 * mm])
+        bt.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("ALIGN", (2, 0), (2, -1), "RIGHT"),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.grey),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#fff7e6")),
+        ]))
+        story += [bt, Spacer(1, 8)]
+
+    rows = [["Items total", naira(invoice.total)]]
+    if invoice.carried_in:
+        rows.append(["Previous balance", naira(invoice.carried_in)])
+        rows.append(["Total due", naira(invoice.amount_due)])
+    if invoice.carried_out:
+        rows.append(["Carried forward", "- " + naira(invoice.carried_out)])
+    rows.append(["Amount paid", naira(invoice.amount_paid)])
+    rows.append(["Balance due", naira(invoice.balance)])
+    last = len(rows) - 1
+    totals = Table(rows, colWidths=[45 * mm, 40 * mm], hAlign="RIGHT")
     totals.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
-        ("LINEABOVE", (0, 2), (-1, 2), 0.5, colors.black),
+        ("FONTNAME", (0, last), (-1, last), "Helvetica-Bold"),
+        ("LINEABOVE", (0, last), (-1, last), 0.5, colors.black),
         ("FONTSIZE", (0, 0), (-1, -1), 10),
     ]))
     story += [totals, Spacer(1, 6)]
@@ -144,6 +168,12 @@ def invoice_pdf(invoice) -> bytes:
                                   textColor=STATUS_COLORS[status])
     story.append(Paragraph(STATUS_LABELS[status], status_style))
 
+    if invoice.carry_outs:
+        targets = ", ".join(sorted({c.to_invoice.invoice_number for c in invoice.carry_outs}))
+        story.append(Paragraph(
+            escape(f"The unpaid balance of {naira(invoice.carried_out)} was carried forward to {targets}."),
+            small,
+        ))
     if invoice.payments:
         story.append(Paragraph("Payments received", heading))
         pay = [["Date", "Method", "Reference", "Amount"]]
@@ -165,7 +195,7 @@ def receipt_pdf(payment) -> bytes:
     invoice = payment.invoice
     customer = invoice.order.customer
     paid_so_far = sum(p.amount for p in invoice.payments if p.id <= payment.id)
-    balance_after = invoice.total - paid_so_far
+    balance_after = invoice.payable - paid_so_far
 
     story = header("RECEIPT")
     story.append(info_table([
@@ -181,7 +211,7 @@ def receipt_pdf(payment) -> bytes:
     amount_style = ParagraphStyle("amount", parent=bold, fontSize=18)
     box = Table([
         [Paragraph("Amount received", base), Paragraph(naira(payment.amount), amount_style)],
-        ["Invoice total", naira(invoice.total)],
+        ["Invoice total", naira(invoice.amount_due)],
         ["Balance after this payment", naira(balance_after)],
     ], colWidths=[85 * mm, 85 * mm])
     box.setStyle(TableStyle([

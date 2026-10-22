@@ -60,13 +60,61 @@
 {% if invoice %}
 <h2>Payment</h2>
 <div class="grid">
-  <div class="card"><div class="label">Total</div><div class="value">{{ invoice.total|naira }}</div></div>
+  <div class="card"><div class="label">{{ "Items total" if invoice.carried_in else "Total" }}</div><div class="value">{{ invoice.total|naira }}</div></div>
+  {% if invoice.carried_in %}
+  <div class="card warn"><div class="label">Brought forward</div><div class="value">{{ invoice.carried_in|naira }}</div></div>
+  <div class="card"><div class="label">Total due</div><div class="value">{{ invoice.amount_due|naira }}</div></div>
+  {% endif %}
+  {% if invoice.carried_out %}
+  <div class="card"><div class="label">Carried forward</div><div class="value">{{ invoice.carried_out|naira }}</div></div>
+  {% endif %}
   <div class="card good"><div class="label">Paid</div><div class="value">{{ invoice.amount_paid|naira }}</div></div>
   <div class="card {{ 'warn' if invoice.balance > 0 else 'good' }}"><div class="label">Balance</div>
     <div class="value">{{ invoice.balance|naira }}</div></div>
   <div class="card"><div class="label">Status</div>
     <div class="value"><span class="badge {{ invoice.payment_status }}">{{ invoice.payment_status|replace("_", " ")|capitalize }}</span></div></div>
 </div>
+
+{% if invoice.carry_ins %}
+<h2>Brought forward from earlier invoices</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for c in invoice.carry_ins|sort(attribute="id") %}
+      <tr>
+        <td><a href="/app/orders/{{ c.from_invoice.order_id }}">{{ c.from_invoice.invoice_number }}</a></td>
+        <td>{{ c.from_invoice.created_at|wat }}</td>
+        <td>{{ c.amount|naira }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if user.role == "admin" %}
+<form method="post" action="/app/orders/{{ order.id }}/carry/remove"
+      onsubmit="return confirm('Remove the brought-forward balance? The earlier invoices will owe it again.')">
+  <div class="actions"><button class="btn secondary" type="submit">Remove brought-forward balance</button></div>
+</form>
+{% endif %}
+{% endif %}
+
+{% if invoice.carry_outs %}
+<h2>Carried forward to a later invoice</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Invoice</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for c in invoice.carry_outs|sort(attribute="id") %}
+      <tr>
+        <td><a href="/app/orders/{{ c.to_invoice.order_id }}">{{ c.to_invoice.invoice_number }}</a></td>
+        <td>{{ c.amount|naira }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 
 {% if invoice.payments %}
 <h2>Payments received</h2>

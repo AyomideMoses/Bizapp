@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}New order - {{ business }}{% endblock %}
+{% block title %}{{ title or "New order" }} - {{ business }}{% endblock %}
 
 {% macro row(r) %}
 <div class="item-row">
@@ -40,7 +40,8 @@
 {% if not customers %}
 <div class="card">Add a customer first. <a href="/app/customers/new">Add customer</a></div>
 {% else %}
-<form method="post" action="{{ action or '/app/orders/new' }}">  <div class="form-card wide">
+<form method="post" action="{{ action or '/app/orders/new' }}">
+  <div class="form-card wide">
     <label for="customer_id">Customer</label>
     <select id="customer_id" name="customer_id" required>
       <option value="">Select a customer...</option>
@@ -48,6 +49,16 @@
       <option value="{{ c.id }}" {{ 'selected' if c.id == customer_id }}>{{ c.name }} - {{ c.phone }}</option>
       {% endfor %}
     </select>
+
+    {% if not action %}
+    <div id="debt-box" class="debt-box" hidden>
+      <label class="check">
+        <input type="checkbox" id="carry" name="carry_forward" value="1" checked>
+        <span>Add this customer's unpaid balance to this invoice (<strong id="debt-total"></strong>)</span>
+      </label>
+      <ul id="debt-list" class="debt-list"></ul>
+    </div>
+    {% endif %}
 
     <label for="due_date">Ready by (optional)</label>
     <input id="due_date" name="due_date" type="datetime-local" value="{{ due_date }}">
@@ -60,13 +71,22 @@
   <button type="button" class="btn secondary" id="add-row">+ Add another garment</button>
 
   <div class="order-total">
-    <span>Total</span>
+    <span>New items</span>
     <strong id="total">₦0</strong>
+  </div>
+  <div class="order-total sub" id="carry-bar" hidden>
+    <span>Previous unpaid balance</span>
+    <strong id="carry-amount">₦0</strong>
+  </div>
+  <div class="order-total" id="grand-bar" hidden>
+    <span>Total to pay</span>
+    <strong id="grand">₦0</strong>
   </div>
 
   <div class="actions">
-<button class="btn" type="submit">{{ submit_label or "Create order & invoice" }}</button>   
-<a class="btn secondary" href="{{ cancel or '/app/customers' }}">Cancel</a>  </div>
+    <button class="btn" type="submit">{{ submit_label or "Create order & invoice" }}</button>
+    <a class="btn secondary" href="{{ cancel or '/app/customers' }}">Cancel</a>
+  </div>
 </form>
 
 <datalist id="garments">
@@ -77,12 +97,20 @@
   <option value="Duvet"></option><option value="Bedsheet"></option>
   <option value="Towel"></option><option value="Curtain"></option>
 </datalist>
-
+<script id="debts-data" type="application/json">{{ (debts or {})|tojson }}</script>
 <script>
   var rowsEl = document.getElementById("rows");
+  var DEBTS = JSON.parse(document.getElementById("debts-data").textContent);
+  var customerSel = document.getElementById("customer_id");
+  var carryBox = document.getElementById("debt-box");
+  var carry = document.getElementById("carry");
 
   function money(n) {
     return "₦" + Math.round(n).toLocaleString("en-NG");
+  }
+
+  function currentDebt() {
+    return carryBox ? (DEBTS[customerSel.value] || null) : null;
   }
 
   function recalc() {
@@ -95,6 +123,33 @@
       total += qty * price;
     }
     document.getElementById("total").textContent = money(total);
+
+    var debt = currentDebt();
+    var applies = !!(debt && carry && carry.checked && !carry.disabled);
+    document.getElementById("carry-bar").hidden = !applies;
+    document.getElementById("grand-bar").hidden = !applies;
+    if (applies) {
+      document.getElementById("carry-amount").textContent = money(debt.total);
+      document.getElementById("grand").textContent = money(total + debt.total);
+    }
+  }
+
+  function refreshDebt() {
+    if (!carryBox) { recalc(); return; }
+    var debt = currentDebt();
+    carryBox.hidden = !debt;
+    carry.disabled = !debt;
+    if (debt) {
+      document.getElementById("debt-total").textContent = money(debt.total);
+      var list = document.getElementById("debt-list");
+      list.innerHTML = "";
+      debt.invoices.forEach(function (inv) {
+        var li = document.createElement("li");
+        li.textContent = inv.number + ": " + money(inv.balance);
+        list.appendChild(li);
+      });
+    }
+    recalc();
   }
 
   document.getElementById("add-row").addEventListener("click", function () {
@@ -117,7 +172,9 @@
   });
 
   rowsEl.addEventListener("input", recalc);
-  recalc();
+  customerSel.addEventListener("change", refreshDebt);
+  if (carry) { carry.addEventListener("change", recalc); }
+  refreshDebt();
 </script>
 {% endif %}
 {% endblock %}

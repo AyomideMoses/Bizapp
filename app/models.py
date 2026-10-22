@@ -40,26 +40,44 @@ class Invoice(Base):
     id = Column(Integer, primary_key=True)
     order_id = Column(Integer, ForeignKey("orders.id"), unique=True, nullable=False)
     invoice_number = Column(String, unique=True, nullable=False)
-    total = Column(Integer, nullable=False)       # naira
+    total = Column(Integer, nullable=False)       # naira, this order's items only
     created_at = Column(DateTime, default=datetime.utcnow)
     order = relationship("Order", back_populates="invoice")
     payments = relationship("Payment", back_populates="invoice", cascade="all, delete-orphan")
+    carry_ins = relationship("CarryForward", foreign_keys="CarryForward.to_invoice_id",
+                             back_populates="to_invoice", cascade="all, delete-orphan")
+    carry_outs = relationship("CarryForward", foreign_keys="CarryForward.from_invoice_id",
+                              back_populates="from_invoice")
 
     @property
     def amount_paid(self) -> int:
         return sum(p.amount for p in self.payments)
 
     @property
+    def carried_in(self) -> int:       # old debt added to this invoice
+        return sum(c.amount for c in self.carry_ins)
+
+    @property
+    def carried_out(self) -> int:      # this invoice's debt moved onto a later invoice
+        return sum(c.amount for c in self.carry_outs)
+
+    @property
+    def amount_due(self) -> int:       # items plus brought-forward debt
+        return self.total + self.carried_in
+
+    @property
+    def payable(self) -> int:          # what this invoice itself still has to collect in total
+        return self.amount_due - self.carried_out
+
+    @property
     def balance(self) -> int:
-        return self.total - self.amount_paid
+        return self.payable - self.amount_paid
 
     @property
     def payment_status(self) -> str:
-        paid = self.amount_paid
-        if paid == 0:
-            return "unpaid"
-        return "paid" if paid >= self.total else "part_paid"
-
+        if self.balance <= 0:
+            return "carried_forward" if self.carried_out > 0 else "paid"
+        return "part_paid" if self.amount_paid > 0 else "unpaid"
 class Payment(Base):
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True)
@@ -101,3 +119,13 @@ class Notification(Base):
     message = Column(Text, nullable=False)
     sent_by = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class CarryForward(Base):
+    __tablename__ = "carry_forwards"
+    id = Column(Integer, primary_key=True)
+    from_invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
+    to_invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
+    amount = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    from_invoice = relationship("Invoice", foreign_keys=[from_invoice_id], back_populates="carry_outs")
+    to_invoice = relationship("Invoice", foreign_keys=[to_invoice_id], back_populates="carry_ins")

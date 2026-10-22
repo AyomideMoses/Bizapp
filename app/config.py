@@ -46,3 +46,4 @@ WHATSAPP_TEMPLATES = {
         "We will let you know as soon as it is. Thank you for your patience. - {business}"
     ),
 }
+PRODUCTION = os.getenv("BIZAPP_ENV", "").lower() == "production"
