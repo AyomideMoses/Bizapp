@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from .orders import next_invoice_number
 from .invoices import build_detail
 from pathlib import Path
@@ -193,14 +193,41 @@ SERVICE_KEYS = {key for key, _ in SERVICES}
 
 def blank_row():
     return {"garment": "", "service": "wash_iron", "quantity": "1", "unit_price": "", "notes": ""}
+def parse_local_received(text):
+    """Parse a 'received on' value (Nigerian time). Returns (local_datetime, error)."""
+    try:
+        local = datetime.strptime(text.strip(), "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None, "The received date is not valid."
+    if local > now_wat() + timedelta(minutes=5):
+        return None, "The received date can't be in the future."
+    if local.year < 2020:
+        return None, "The received date is too far in the past."
+    return local, None
 
-def order_form(request, user, db, rows, customer_id=0, due_date="", error=None, status=200):
+def parse_received(text, user):
+    """For new orders. Returns (utc_datetime_or_None, backdated, error).
+    None means 'use the real time'. Only admins can set a date."""
+    if user.role != "admin" or not text.strip():
+        return None, False, None
+    local, error = parse_local_received(text)
+    if error:
+        return None, False, error
+    if local >= now_wat() - timedelta(minutes=10):
+        return None, False, None          # effectively "now"
+    return local - WAT, True, None
+def order_form(request, user, db, rows, customer_id=0, due_date="", error=None, status=200,
+               received=None):
     customers = db.query(models.Customer).order_by(models.Customer.name).all()
+    now_text = now_wat().strftime("%Y-%m-%dT%H:%M")
     return templates.TemplateResponse(
         request, "order_form.html",
         {"user": user, "page": "new_order", "customers": customers, "rows": rows,
          "customer_id": customer_id, "due_date": due_date, "services": SERVICES, "error": error,
-          "debts": debts.debts_by_customer(db)},
+         "debts": debts.debts_by_customer(db),
+         "can_backdate": user.role == "admin",
+         "received": received if received is not None else now_text,
+         "received_default": now_text},
         status_code=status,
     )
 
@@ -241,6 +268,7 @@ def order_create(
     request: Request,
     customer_id: int = Form(0),
     due_date: str = Form(""),
+    received: str = Form(""),
     carry_forward: str = Form(""),
     garment: list[str] = Form([]),
     service: list[str] = Form([]),
@@ -256,11 +284,16 @@ def order_create(
     ] or [blank_row()]
 
     def fail(message):
-        return order_form(request, user, db, rows, customer_id, due_date, message, status=400)
+        return order_form(request, user, db, rows, customer_id, due_date, message,
+                          status=400, received=received or None)
 
     customer = db.get(models.Customer, customer_id)
     if not customer:
         return fail("Choose a customer.")
+
+    received_utc, backdated, error = parse_received(received, user)
+    if error:
+        return fail(error)
 
     due = None
     if due_date.strip():
@@ -268,21 +301,29 @@ def order_create(
             due = datetime.strptime(due_date.strip(), "%Y-%m-%dT%H:%M")
         except ValueError:
             return fail("The ready-by date is not valid.")
+    if due and received_utc and due < received_utc + WAT:
+        return fail("The ready-by time can't be before the received date.")
 
     items, error = parse_rows(rows)
     if error:
         return fail(error)
 
     order = models.Order(customer_id=customer.id, due_date=due)
+    if received_utc:
+        order.created_at = received_utc
     for item in items:
         order.items.append(models.OrderItem(**item))
-    order.invoice = models.Invoice(
+    invoice = models.Invoice(
         invoice_number=next_invoice_number(db),
         total=sum(i["quantity"] * i["unit_price"] for i in items),
     )
-    if carry_forward == "1":
+    if received_utc:
+        invoice.created_at = received_utc
+    order.invoice = invoice
+
+    if carry_forward == "1" and not backdated:
         for old in debts.open_invoices(db, customer.id):
-            db.add(models.CarryForward(from_invoice=old, to_invoice=order.invoice, amount=old.balance))
+            db.add(models.CarryForward(from_invoice=old, to_invoice=invoice, amount=old.balance))
     db.add(order)
     db.commit()
     return RedirectResponse(f"/app/customers/{customer.id}?msg=order", status_code=303)

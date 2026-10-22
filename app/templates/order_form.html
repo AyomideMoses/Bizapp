@@ -50,6 +50,13 @@
       {% endfor %}
     </select>
 
+    {% if can_backdate %}
+    <label for="received">Received on</label>
+    <input id="received" name="received" type="datetime-local" value="{{ received }}"
+           data-default="{{ received_default }}">
+    <p class="muted" id="backdate-note" hidden>This order is dated in the past, so the customer's unpaid balance is not added to it.</p>
+    {% endif %}
+
     {% if not action %}
     <div id="debt-box" class="debt-box" hidden>
       <label class="check">
@@ -97,6 +104,7 @@
   <option value="Duvet"></option><option value="Bedsheet"></option>
   <option value="Towel"></option><option value="Curtain"></option>
 </datalist>
+
 <script id="debts-data" type="application/json">{{ (debts or {})|tojson }}</script>
 <script>
   var rowsEl = document.getElementById("rows");
@@ -104,13 +112,23 @@
   var customerSel = document.getElementById("customer_id");
   var carryBox = document.getElementById("debt-box");
   var carry = document.getElementById("carry");
+  var receivedEl = document.getElementById("received");
+  var note = document.getElementById("backdate-note");
 
   function money(n) {
     return "₦" + Math.round(n).toLocaleString("en-NG");
   }
 
+  function isBackdated() {
+    if (!receivedEl || !receivedEl.value || !carryBox) { return false; }
+    var base = new Date(receivedEl.dataset.default).getTime();
+    var chosen = new Date(receivedEl.value).getTime();
+    return !isNaN(base) && !isNaN(chosen) && (base - chosen) > 10 * 60 * 1000;
+  }
+
   function currentDebt() {
-    return carryBox ? (DEBTS[customerSel.value] || null) : null;
+    if (!carryBox || isBackdated()) { return null; }
+    return DEBTS[customerSel.value] || null;
   }
 
   function recalc() {
@@ -139,6 +157,7 @@
     var debt = currentDebt();
     carryBox.hidden = !debt;
     carry.disabled = !debt;
+    if (note) { note.hidden = !(isBackdated() && DEBTS[customerSel.value]); }
     if (debt) {
       document.getElementById("debt-total").textContent = money(debt.total);
       var list = document.getElementById("debt-list");
@@ -174,6 +193,7 @@
   rowsEl.addEventListener("input", recalc);
   customerSel.addEventListener("change", refreshDebt);
   if (carry) { carry.addEventListener("change", recalc); }
+  if (receivedEl) { receivedEl.addEventListener("change", refreshDebt); }
   refreshDebt();
 </script>
 {% endif %}

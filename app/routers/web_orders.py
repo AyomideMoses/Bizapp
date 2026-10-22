@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..database import get_db
 from ..utils import now_wat, WAT
-from .web import templates, web_user, SERVICES, blank_row, parse_rows
+from .web import templates, web_user, SERVICES, blank_row, parse_rows, parse_local_received
 
 STATUSES = ["received", "processing", "ready", "delivered"]
 METHODS = [("cash", "Cash"), ("transfer", "Transfer"), ("pos", "POS")]
@@ -131,7 +131,8 @@ def add_payment(request: Request, order_id: int, amount: str = Form(""),
 
 # ---------- Admin: edit and delete an order ----------
 
-def edit_form(request, user, db, order, rows, customer_id, due_date, error=None, status=200):
+def edit_form(request, user, db, order, rows, customer_id, due_date, received,
+              error=None, status=200):
     customers = db.query(models.Customer).order_by(models.Customer.name).all()
     label = order.invoice.invoice_number if order.invoice else f"order {order.id}"
     return templates.TemplateResponse(
@@ -140,7 +141,8 @@ def edit_form(request, user, db, order, rows, customer_id, due_date, error=None,
          "customer_id": customer_id, "due_date": due_date, "services": SERVICES,
          "error": error, "title": f"Edit {label}",
          "action": f"/app/orders/{order.id}/edit", "submit_label": "Save changes",
-         "cancel": f"/app/orders/{order.id}"},
+         "cancel": f"/app/orders/{order.id}",
+         "can_backdate": True, "received": received, "received_default": received},
         status_code=status,
     )
 
@@ -156,7 +158,8 @@ def order_edit(request: Request, order_id: int, user=Depends(web_admin),
         for i in order.items
     ] or [blank_row()]
     due = order.due_date.strftime("%Y-%m-%dT%H:%M") if order.due_date else ""
-    return edit_form(request, user, db, order, rows, order.customer_id, due)
+    received = (order.created_at + WAT).strftime("%Y-%m-%dT%H:%M")
+    return edit_form(request, user, db, order, rows, order.customer_id, due, received)
 
 @router.post("/app/orders/{order_id:int}/edit")
 def order_update(
@@ -164,6 +167,7 @@ def order_update(
     order_id: int,
     customer_id: int = Form(0),
     due_date: str = Form(""),
+    received: str = Form(""),
     garment: list[str] = Form([]),
     service: list[str] = Form([]),
     quantity: list[str] = Form([]),
@@ -179,13 +183,22 @@ def order_update(
         {"garment": g, "service": s, "quantity": q, "unit_price": p, "notes": n}
         for g, s, q, p, n in zip(garment, service, quantity, unit_price, notes)
     ] or [blank_row()]
+    current_text = (order.created_at + WAT).strftime("%Y-%m-%dT%H:%M")
 
     def fail(message):
-        return edit_form(request, user, db, order, rows, customer_id, due_date, message, status=400)
+        return edit_form(request, user, db, order, rows, customer_id, due_date,
+                         received or current_text, message, status=400)
 
     customer = db.get(models.Customer, customer_id)
     if not customer:
         return fail("Choose a customer.")
+
+    new_created = None                       # stays None unless the date was changed
+    if received.strip() and received.strip() != current_text:
+        local, error = parse_local_received(received)
+        if error:
+            return fail(error)
+        new_created = local - WAT
 
     due = None
     if due_date.strip():
@@ -193,6 +206,9 @@ def order_update(
             due = datetime.strptime(due_date.strip(), "%Y-%m-%dT%H:%M")
         except ValueError:
             return fail("The ready-by date is not valid.")
+    effective = new_created or order.created_at
+    if due and due < effective + WAT:
+        return fail("The ready-by time can't be before the received date.")
 
     items, error = parse_rows(rows)
     if error:
@@ -206,6 +222,15 @@ def order_update(
                 f"The new total would be ₦{payable_after:,}, which is less than the "
                 f"₦{order.invoice.amount_paid:,} already paid. Edit or delete the payments first."
             )
+        if new_created:
+            for line in order.invoice.carry_ins:
+                if new_created < line.from_invoice.created_at:
+                    return fail(f"This invoice brought forward a balance from "
+                                f"{line.from_invoice.invoice_number}, so it can't be dated earlier than that invoice.")
+            for line in order.invoice.carry_outs:
+                if new_created > line.to_invoice.created_at:
+                    return fail(f"A balance from this invoice was carried forward to "
+                                f"{line.to_invoice.invoice_number}, so it can't be dated later than that invoice.")
 
     order.customer_id = customer.id
     order.due_date = due
@@ -214,9 +239,13 @@ def order_update(
         order.items.append(models.OrderItem(**item))
     if order.invoice:
         order.invoice.total = new_total
+    if new_created:
+        order.created_at = new_created
+        if order.invoice:
+            order.invoice.created_at = new_created
     db.commit()
     return RedirectResponse(f"/app/orders/{order.id}?msg=updated", status_code=303)
-
+    
 @router.post("/app/orders/{order_id:int}/delete")
 def order_delete(request: Request, order_id: int, user=Depends(web_admin),
                  db: Session = Depends(get_db)):
