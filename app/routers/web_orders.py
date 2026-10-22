@@ -53,12 +53,12 @@ def orders_page(request: Request, status: str = "", pay: str = "", q: str = "",
             | models.Customer.phone.contains(term)
             | models.Invoice.invoice_number.ilike(f"%{term}%")
         )
-    orders = [o for o in orders if o.invoice and o.invoice.payment_status == "paid"]
+    orders = query.order_by(models.Order.created_at.desc()).limit(300).all()
 
     if pay == "unpaid":
         orders = [o for o in orders if o.invoice and o.invoice.balance > 0]
     elif pay == "paid":
-        orders = [o for o in orders if o.invoice and o.invoice.balance == 0]
+        orders = [o for o in orders if o.invoice and o.invoice.payment_status == "paid"]
 
     return templates.TemplateResponse(
         request, "orders.html",
@@ -245,7 +245,7 @@ def order_update(
             order.invoice.created_at = new_created
     db.commit()
     return RedirectResponse(f"/app/orders/{order.id}?msg=updated", status_code=303)
-    
+
 @router.post("/app/orders/{order_id:int}/delete")
 def order_delete(request: Request, order_id: int, user=Depends(web_admin),
                  db: Session = Depends(get_db)):
